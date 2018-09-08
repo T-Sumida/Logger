@@ -13,27 +13,37 @@ class FileManager:
     """ ファイル関連を管理するクラス """
     
     def __init__(self):
+        """
+        コンストラクタ処理
+        """
         self.rootDirPath=''
         self.initProcess()
         
 
     def initProcess(self):
-        self.checkExistFile(CONFIGFILE_NAME)
+        """
+        初期化処理
+        コンフィグファイルから設定を読み込み、Logger/[年]/[月日].txtを作る
+        """
+        self.checkExistFile(CONFIGFILE_NAME) #コンフィグファイルの存在を確認
 
         with open(CONFIGFILE_NAME) as f:
-            self.rootDirPath = f.read()
+            self.rootDirPath = f.read() # Logを保存するディレクトリパスを取得
 
-        if self.rootDirPath == "":
+        if self.rootDirPath == "": # ディレクトリパスが無かったら、新しく設定する
             self.selectRootDir()
             with open(CONFIGFILE_NAME,'w') as f:
                 f.write(self.rootDirPath)
 
-        if os.path.isdir(self.rootDirPath + LOGDIR_NAME) == False:
+        if os.path.isdir(self.rootDirPath + LOGDIR_NAME) == False: # Logディレクトリが無かったら新しく作成する
             print(self.rootDirPath+LOGDIR_NAME)
             os.mkdir(self.rootDirPath+LOGDIR_NAME)
 
 
-    def writeLog(self,contents):
+    def write(self,contents):
+        """
+        引数に与えられた内容を、保存時の[年]/[月日].txtに、時間と共に書き込む
+        """
         now = datetime.datetime.now()
         dirname = self.rootDirPath + LOGDIR_NAME + '/{0:%Y}'.format(now)
         filename = dirname + '/{0:%m%d}.txt'.format(now)
@@ -44,28 +54,41 @@ class FileManager:
                 f.write('\n-------- {0:%H:%M:%S}--------\n'.format(now))
                 f.write(contents)
 
+
     def checkExistFile(self,filepath):
+        """
+        ファイルの存在をチェックする
+        無かったら新しく作成する
+        """
         if os.path.isfile(filepath) == False:
             with open(filepath,'w') as f:
                 f.write("")
 
+    def changeRootDirPath(self):
+        """
+        ログ保存ディレクトリを選択し直す
+        """
+        with open(CONFIGFILE_NAME,'w') as f:
+                f.write("")
+        self.initProcess()
+
+
+
     def selectRootDir(self):
+        """
+        ログを保存するディレクトリを選択するダイアログを出す
+        """
         root = tkinter.Tk()
         root.withdraw()
 
-        # Make it almost invisible - no decorations, 0 size, top left corner.
         root.overrideredirect(True)
         root.geometry('0x0+0+0')
 
-        # Show window again and lift it to top so it can get focus,
-        # otherwise dialogs will end up behind the terminal.
         root.deiconify()
         root.lift()
         root.focus_force()
 
-        self.rootDirPath = tkFileDialog.askdirectory(parent=root) # Or some other dialog
-
-        # Get rid of the top-level instance once to make it actually invisible.
+        self.rootDirPath = tkFileDialog.askdirectory(parent=root)
         root.destroy()
 
 
@@ -73,42 +96,54 @@ class Logger(tkinter.Frame):
     """ Logger本体クラス"""
 
     def __init__(self,master=None):
-        tkinter.Frame.__init__(self,master)
-        self.font = 'メイリオ'
-        self.master.title("Logger")
-        self.config(width=20,height=20)
+        """
+        コンストラクタ
+        初期化処理を行う
+        """
+        tkinter.Frame.__init__(self,master)  # Logger本体のフレームを初期化
+        self.font = 'メイリオ'                # フォント設定
+        self.master.title("Logger")          # フレームタイトルの設定
+        self.config(width=20,height=20)      # フレームサイズの設定
 
-        self.fileMgr = FileManager()
+        self.fileMgr = FileManager()         # ファイル管理クラスインスタンスを作成
 
+        # ログ書き込み部とメニュー部の初期化
         self.createTextField()
         self.createMenu()
         self.master.configure(menu=self.menu)
 
+        # キーバインド設定
         self.master.bind("<Control-Key-s>",self.save)
+        self.master.bind("<Control-Key-r>",self.changeRootDir)
 
         self.pack()
 
-
-
     def createTextField(self):
+        """
+        テキストフィールドを作成する
+        """
         self.txt = tkinter.scrolledtext.ScrolledText(self.master,width=30, height=10, font=(self.font, '15'))
         self.txt.pack(fill=tkinter.BOTH, expand=1)
 
     def createMenu(self):
+        """
+        メニューを作成する
+        """
         self.menu = tkinter.Menu(self.master)
         me = tkinter.Menu(self.master)
         me.add_command(label='new')
         self.menu.add_cascade(menu=me,label='file')
 
     def save(self,event):
-        self.fileMgr.writeLog(self.txt.get('1.0', tk.END))
+        """
+        コールバック関数
+        テキストフィールドにある文字列を保存する
+        """
+        self.fileMgr.write(self.txt.get('1.0', tk.END))
         self.txt.delete('1.0',tk.END)
 
-    def load(self,event):
-        print('r')
-
     def changeRootDir(self,event):
-        print('c')
+        self.fileMgr.changeRootDirPath()
         
 
 
